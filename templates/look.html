@@ -6,4 +6,10 @@
 
 <img src="{{ look['screenshot'] }}"/>
 
+<ul>
+{% for item in look["items"] %}
+  <li>Name: {{ item["name"] }}</li>
+{% endfor %}
+</ul>
+
 {% endblock %}

@@ -14,8 +14,8 @@ Bootstrap(app)
 def index():
     return render_template('index.html')
 
-@app.route('/item')
-def get_item():
+@app.route('/looks/<int:look_id>/<lookname>')
+def get_item(look_id, lookname):
     look = mongo.db.looks.find_one()
     return render_template('look.html', look=look)
 
