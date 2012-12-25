@@ -17,7 +17,7 @@ def index():
 @app.route('/item')
 def get_item():
     look = mongo.db.looks.find_one()
-    return render_template('look.html', title = look["title"])
+    return render_template('look.html', look=look)
 
 if __name__ == '__main__':
     app.run(debug=True)
