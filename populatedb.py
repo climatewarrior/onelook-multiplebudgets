@@ -24,7 +24,7 @@ items = [item0, item1]
 look = {"title": "Mike",
         "text": "My first look!",
         "tags": ["casual", "hawt", "reddit"],
-        "screenshot": "static/looks_imgs/4e4ng.jpg",
+        "screenshot": "4e4ng.jpg",
         "items": items}
 
 looks.insert(look)
