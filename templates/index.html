@@ -29,6 +29,12 @@
         <p><a class="btn btn-primary btn-large">Learn more &raquo;</a></p>
       </div>
 
-      <p>Look ma, no forms!</p>
     </div>
+
+<ul>
+{% for look in looks %}
+  <li><a href="{{ url_for('get_look', look_id=look['_id'], lookname='blah') }}">Name: {{ look['title'] }} </a></li>
+{% endfor %}
+</ul>
+
 {% endblock %}
