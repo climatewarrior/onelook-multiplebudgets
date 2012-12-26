@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf8 -*- 
+# -*- coding: utf-8 -*-
 
 # Copyright (C) 2012 Gabriel J. Pérez Irizarry and Andrea Del Risco
 #
@@ -18,8 +18,8 @@
 from flask import Flask, render_template, request, flash, redirect, url_for
 from flask.ext.pymongo import PyMongo
 from flask.ext.bootstrap import Bootstrap
-from flask.ext.wtf import Form, TextField, HiddenField, ValidationError,\
-                          Required, RecaptchaField
+from flask.ext.wtf import Form, TextField, HiddenField, FileField, \
+     ValidationError, Required, RecaptchaField, validators
 
 from bson.objectid import ObjectId
 import json_app
@@ -35,6 +35,8 @@ class LookForm(Form):
     title = TextField('Look Name', description='This is field one.')
     description = TextField('Description', description='This is field two.',
                        validators=[Required()])
+    image  = FileField(u'Image File', [validators.regexp(u'.*.jpg')])
+
     hidden_field = HiddenField('You cannot see this', description='Nope')
     #recaptcha = RecaptchaField('A sample recaptcha field')
 
@@ -69,7 +71,7 @@ def add_look(form):
 @app.route('/')
 def index():
     looks = mongo.db.looks.find().limit(10)
-        
+
     return render_template('index.html', looks = looks)
 
 @app.route('/submit_new_look/', methods=('GET', 'POST'))
