@@ -17,9 +17,11 @@
 
 from flask import Flask, render_template, request, flash, redirect, url_for
 from flask.ext.pymongo import PyMongo
+
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.wtf import Form, TextField, HiddenField, FileField, \
      ValidationError, Required, RecaptchaField, validators
+from flask.ext.uploads import UploadSet, configure_uploads, IMAGES
 
 from bson.objectid import ObjectId
 import json_app
@@ -28,8 +30,16 @@ app = json_app.make_json_app('__main__')
 mongo = PyMongo(app)
 Bootstrap(app)
 
+# defaults
+
 app.config['SECRET_KEY'] = 'devkey'
 app.config['RECAPTCHA_PUBLIC_KEY'] = '6Lfol9cSAAAAADAkodaYl9wvQCwBMr3qGR_PPHcw'
+app.config['UPLOADED_PHOTOS_DEST'] = '/tmp/photolog'
+
+# uploads
+
+photos = UploadSet('photos', IMAGES)
+configure_uploads(app, photos)
 
 class LookForm(Form):
     title = TextField('Look Name', description='This is field one.')
@@ -83,6 +93,16 @@ def submit_new_look():
         return redirect(url_for("index"))
 
     return render_template('submit_new_look.html', form=form)
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    # for property, value in vars(request).iteritems():
+    #     print property, ": ", value
+    if request.method == 'POST' and 'file' in request.files:
+        filename = photos.save(request.files['file'])
+        flash("Photo saved.")
+        return redirect(url_for("index"))
+    return "Uploaded"
 
 @app.route('/looks/<look_id>/<lookname>')
 def get_look(look_id, lookname):
