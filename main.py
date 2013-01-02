@@ -22,7 +22,8 @@ from flask.ext.bootstrap import Bootstrap
 from flask.ext.wtf import (Form, TextField, HiddenField, BooleanField,
      PasswordField, SubmitField, ValidationError, Required, RecaptchaField, validators)
 from flask.ext.uploads import (UploadSet, configure_uploads, IMAGES)
-from flask.ext.login import (LoginManager, UserMixin, current_user)
+from flask.ext.login import (LoginManager, login_user, logout_user,
+                             login_required, UserMixin, current_user)
 
 from bson.objectid import ObjectId
 import json_app
@@ -51,11 +52,16 @@ class User(UserMixin):
         self.id = id
         self.current_upload = ""
 
+class RegistrationForm(Form):
+    email = TextField('Email Address', [validators.Length(min=6, max=35)])
+    username = TextField('Username', [validators.Length(min=4, max=25)])
+    password = PasswordField('Password')
+    accept_rules = BooleanField('I accept the site rules', [validators.Required()])
+
 class LoginForm(Form):
     username = TextField('Username')
     password = PasswordField('Password')
     remember_me = BooleanField('Remember me')
-    submit = SubmitField('Submit')
 
 class LookForm(Form):
     title = TextField('Look Name', description='This is field one.')
@@ -89,17 +95,44 @@ def index():
 
     return render_template('index.html', looks = looks)
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route('/register/', methods=["GET", "POST"])
+def register():
+    form = RegistrationForm()
+    if request.method == 'POST' and form.validate():
+
+        user = {'username': form.username.data,
+                'email': form.email.data,
+                'password': form.password.data}
+
+        mongo.db.users.insert(user)
+
+        redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
+@app.route("/login/", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-    if form.validate_on_submit():
-        # login and validate the user...
-        login_user(user)
-        flash("Logged in successfully.")
-        return redirect(request.args.get("next") or url_for("index"))
+    if request.method == "POST" and form.validate():
+        user = mongo.db.users.find_one({"username": form.username.data})
+        if user != None:
+            print "Uid: " + str(user['_id'])
+            if login_user(User(str(user['_id'])), remember=form.remember_me.data):
+                flash("Logged in!")
+                return redirect(url_for("index"))
+            else:
+                flash("Sorry, but you could not log in.")
+        else:
+            flash(u"Invalid username.")
     return render_template("login.html", form=form)
 
-@app.route('/submit_new_look/', methods=('GET', 'POST'))
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Logged out.")
+    return redirect(url_for("index"))
+
+@app.route('/submit_new_look/', methods=['GET', 'POST'])
 def submit_new_look():
     form = LookForm()
     if request.method == "POST":
