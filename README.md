@@ -11,6 +11,7 @@
 	* `[sudo] pip install flask-bootstrap`
 	* `[sudo] pip install Flask-WTF`
 	* `[sudo] pip install Flask-Uploads`
+	* `[sudo] pip install Flask-Login`
 * Install MongoDB
 	* OSX: `brew install mongodb`
 * Run MongoDB: `mongod`
@@ -30,3 +31,4 @@
 * [Flask-Bootstrap](https://github.com/mbr/flask-bootstrap)
 * [Flask-WTF](http://packages.python.org/Flask-WTF/)
 * [Flask-Uploads](http://packages.python.org/Flask-Uploads/)
+* [Flask-Login](http://packages.python.org/Flask-Login/)

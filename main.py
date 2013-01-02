@@ -19,33 +19,48 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from flask.ext.pymongo import PyMongo
 
 from flask.ext.bootstrap import Bootstrap
-from flask.ext.wtf import Form, TextField, HiddenField, FileField, \
-     ValidationError, Required, RecaptchaField, validators
-from flask.ext.uploads import UploadSet, configure_uploads, IMAGES
+from flask.ext.wtf import (Form, TextField, HiddenField, BooleanField,
+     PasswordField, SubmitField, ValidationError, Required, RecaptchaField, validators)
+from flask.ext.uploads import (UploadSet, configure_uploads, IMAGES)
+from flask.ext.login import (LoginManager, UserMixin, current_user)
 
 from bson.objectid import ObjectId
 import json_app
 
 app = json_app.make_json_app('__main__')
-mongo = PyMongo(app)
+
+login_manager = LoginManager()
+login_manager.setup_app(app)
 Bootstrap(app)
+
+mongo = PyMongo(app)
 
 # defaults
 
 app.config['SECRET_KEY'] = 'devkey'
 app.config['RECAPTCHA_PUBLIC_KEY'] = '6Lfol9cSAAAAADAkodaYl9wvQCwBMr3qGR_PPHcw'
-app.config['UPLOADED_PHOTOS_DEST'] = '/tmp/photolog'
+app.config['UPLOADED_PHOTOS_DEST'] = 'static/looks_imgs/'
 
 # uploads
 
 photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 
+class User(UserMixin):
+    def __init__(self, id):
+        self.id = id
+        self.current_upload = ""
+
+class LoginForm(Form):
+    username = TextField('Username')
+    password = PasswordField('Password')
+    remember_me = BooleanField('Remember me')
+    submit = SubmitField('Submit')
+
 class LookForm(Form):
     title = TextField('Look Name', description='This is field one.')
     description = TextField('Description', description='This is field two.',
                        validators=[Required()])
-    image  = FileField(u'Image File', [validators.regexp(u'.*.jpg')])
 
     hidden_field = HiddenField('You cannot see this', description='Nope')
     #recaptcha = RecaptchaField('A sample recaptcha field')
@@ -53,30 +68,20 @@ class LookForm(Form):
     def validate_hidden_field(form, field):
         pass
 
-def add_look(form):
+@login_manager.user_loader
+def load_user(user_id):
+    return User(mongo.db.users.find_one({"_id": ObjectId(user_id)}))
 
-    item1 = {"name":"Clark's Dessert Boots",
-             "price":110.00,
-             "type":"boot",
-             "screenshot":"blah.jpg",
-             "link":"http://google.com/"}
-
-    item0 = {"name":"Levi's 511",
-             "price":37.00,
-             "type":"denim",
-             "screenshot":"blah.jpg",
-             "link":"http://google.com/"}
-
-    items = [item0, item1]
+def add_look(form, filename):
 
     look = {"title": form.title.data,
             "text": form.description.data,
+            "user": "",
             "tags": ["casual", "hawt", "reddit"],
-            "screenshot": str(url_for('static', filename='looks_imgs/4e4ng.jpg')),
-            "items": items}
+            "screenshot": str(url_for('static', filename='looks_imgs/' + filename)),
+            "items": {}}
 
     return mongo.db.looks.insert(look)
-
 
 @app.route('/')
 def index():
@@ -84,25 +89,36 @@ def index():
 
     return render_template('index.html', looks = looks)
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        # login and validate the user...
+        login_user(user)
+        flash("Logged in successfully.")
+        return redirect(request.args.get("next") or url_for("index"))
+    return render_template("login.html", form=form)
+
 @app.route('/submit_new_look/', methods=('GET', 'POST'))
 def submit_new_look():
     form = LookForm()
     if request.method == "POST":
-        look_id = str(add_look(form))
+        look_id = str(add_look(form, current_user.current_upload))
         flash("Sucess " + look_id)
         return redirect(url_for("index"))
 
     return render_template('submit_new_look.html', form=form)
 
-@app.route('/upload', methods=['GET', 'POST'])
+@app.route('/upload', methods=['POST'])
 def upload():
     # for property, value in vars(request).iteritems():
     #     print property, ": ", value
     if request.method == 'POST' and 'file' in request.files:
         filename = photos.save(request.files['file'])
+        current_user.current_upload = filename
         flash("Photo saved.")
-        return redirect(url_for("index"))
-    return "Uploaded"
+
+    return
 
 @app.route('/looks/<look_id>/<lookname>')
 def get_look(look_id, lookname):
