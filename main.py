@@ -48,15 +48,18 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 
 class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-        self.current_upload = ""
+    def __init__(self, user_dict):
+        print user_dict
+        self.id = str(user_dict['_id'])
+        self.username = user_dict['username']
+        self.email = user_dict['email']
+        self.current_upload = user_dict['current_upload']
 
 class RegistrationForm(Form):
     email = TextField('Email Address', [validators.Length(min=6, max=35)])
     username = TextField('Username', [validators.Length(min=4, max=25)])
     password = PasswordField('Password')
-    accept_rules = BooleanField('I accept the site rules', [validators.Required()])
+    accept_rules = BooleanField('I accept the site rules', validators=[Required()])
 
 class LoginForm(Form):
     username = TextField('Username')
@@ -78,7 +81,9 @@ class LookForm(Form):
 def load_user(user_id):
     return User(mongo.db.users.find_one({"_id": ObjectId(user_id)}))
 
-def add_look(form, filename):
+def add_look(form):
+
+    filename = current_user.current_upload
 
     look = {"title": form.title.data,
             "text": form.description.data,
@@ -98,11 +103,14 @@ def index():
 @app.route('/register/', methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
+    print form.validate()
+    print form.errors
     if request.method == 'POST' and form.validate():
-
+        print "Inserting"
         user = {'username': form.username.data,
                 'email': form.email.data,
-                'password': form.password.data}
+                'password': form.password.data,
+                'current_upload': ''}
 
         mongo.db.users.insert(user)
 
@@ -114,9 +122,9 @@ def login():
     form = LoginForm()
     if request.method == "POST" and form.validate():
         user = mongo.db.users.find_one({"username": form.username.data})
+        print user
         if user != None:
-            print "Uid: " + str(user['_id'])
-            if login_user(User(str(user['_id'])), remember=form.remember_me.data):
+            if login_user(User(user), remember=form.remember_me.data):
                 flash("Logged in!")
                 return redirect(url_for("index"))
             else:
@@ -136,7 +144,8 @@ def logout():
 def submit_new_look():
     form = LookForm()
     if request.method == "POST":
-        look_id = str(add_look(form, current_user.current_upload))
+        print "Current upload"
+        look_id = str(add_look(form))
         flash("Sucess " + look_id)
         return redirect(url_for("index"))
 
@@ -148,14 +157,15 @@ def upload():
     #     print property, ": ", value
     if request.method == 'POST' and 'file' in request.files:
         filename = photos.save(request.files['file'])
-        current_user.current_upload = filename
+        mongo.db.users.update({'_id': ObjectId(current_user.id)}, {'$set' : {'current_upload': filename}})
         flash("Photo saved.")
+        return "OK"
+    return "OK"
 
-    return
 
 @app.route('/looks/<look_id>/<lookname>')
 def get_look(look_id, lookname):
-    look = mongo.db.looks.find_one({"_id": ObjectId(look_id)})
+    look = mongo.db.looks.find_one({'_id': ObjectId(look_id)})
     return render_template('look.html', look=look)
 
 if __name__ == '__main__':
