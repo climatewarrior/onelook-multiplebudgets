@@ -41,3 +41,5 @@ nosetests.xml
 *.db
 *.csv
 
+# User submited images
+static/looks_imgs
