@@ -90,7 +90,7 @@ def add_look(form):
             "user": "",
             "tags": ["casual", "hawt", "reddit"],
             "screenshot": str(url_for('static', filename='looks_imgs/' + filename)),
-            "items": {}}
+            "items": []}
 
     return mongo.db.looks.insert(look)
 
@@ -103,10 +103,8 @@ def index():
 @app.route('/register/', methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
-    print form.validate()
-    print form.errors
+
     if request.method == 'POST' and form.validate():
-        print "Inserting"
         user = {'username': form.username.data,
                 'email': form.email.data,
                 'password': form.password.data,
@@ -122,7 +120,6 @@ def login():
     form = LoginForm()
     if request.method == "POST" and form.validate():
         user = mongo.db.users.find_one({"username": form.username.data})
-        print user
         if user != None:
             if login_user(User(user), remember=form.remember_me.data):
                 flash("Logged in!")
@@ -151,22 +148,46 @@ def submit_new_look():
 
     return render_template('submit_new_look.html', form=form)
 
+@app.route('/add_item/<look_id>', methods=['POST'])
+def add_item(look_id):
+    if request.method == "POST":
+        print "Adding item"
+        look = mongo.db.looks.find_one({'_id': ObjectId(look_id)})
+        items = look['items']
+
+        new_item = {"name":"Clark's Dessert Boots",
+        "price":110.00,
+        "type":"boot",
+        "screenshot":"blah.jpg",
+        "link":"http://google.com/"}
+
+        item_id = mongo.db.items.insert(new_item)
+
+        items.append(item_id)
+        mongo.db.looks.update({'_id': ObjectId(look_id)},
+                              {'$set' : {'items': items}})
+        flash("Sucess ")
+        return 'OK'
+    return 'OK'
+
 @app.route('/upload', methods=['POST'])
 def upload():
     # for property, value in vars(request).iteritems():
     #     print property, ": ", value
     if request.method == 'POST' and 'file' in request.files:
         filename = photos.save(request.files['file'])
-        mongo.db.users.update({'_id': ObjectId(current_user.id)}, {'$set' : {'current_upload': filename}})
+        mongo.db.users.update({'_id': ObjectId(current_user.id)},
+                              {'$set' : {'current_upload': filename}})
         flash("Photo saved.")
         return "OK"
     return "OK"
 
-
 @app.route('/looks/<look_id>/<lookname>')
 def get_look(look_id, lookname):
     look = mongo.db.looks.find_one({'_id': ObjectId(look_id)})
-    return render_template('look.html', look=look)
+    item_ids = look['items']
+    items = [mongo.db.items.find_one({'_id': i}) for i in item_ids]
+    return render_template('look.html', look=look, items=items)
 
 if __name__ == '__main__':
     app.run(debug=True)
